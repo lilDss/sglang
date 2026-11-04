@@ -210,6 +210,14 @@ def init_npu_backend():
 
     assert _is_npu, "NPU backend initialization called on non-NPU device."
 
+    # Preserve the pre-migration extension initialization order when the
+    # deployment still provides custom_ops. Released-only installs may omit it.
+    try:
+        import custom_ops  # noqa: F401
+    except ModuleNotFoundError as error:
+        if error.name != "custom_ops":
+            raise
+
     try:
         import sgl_kernel_npu  # noqa: F401
     except ImportError as e:
