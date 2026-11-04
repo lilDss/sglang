@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING, Optional
 import torch
 import torch.nn.functional as F
 import torch_npu
-from sgl_kernel_npu.operators import attention as npu_attention_ops
-from sgl_kernel_npu.operators import kvcacheio as npu_cache_ops
 
 from sglang.srt.environ import envs
 from sglang.srt.hardware_backend.npu.attention.ascend_backend import AscendAttnBackend
@@ -39,6 +37,8 @@ _NPU_ARCH35_KV_ROPE_HEAD_DIM = 64
 
 def _sparse_attn_ops():
     """(metadata op, attention op) for the DSV4 shared-KV sparse attention."""
+    from sgl_kernel_npu.operators import attention as npu_attention_ops
+
     if is_npu_arch35():
         return (
             npu_attention_ops.mixed_quant_sparse_flash_mla_metadata,
@@ -454,6 +454,7 @@ class CompressorAscendBackendMixin:
         x: torch.Tensor,
         forward_batch: ForwardBatch,
     ) -> None:
+        from sgl_kernel_npu.operators import attention as npu_attention_ops
 
         ratio = compressor.ratio
         coff = 1 + int(compressor.overlap)
@@ -560,6 +561,8 @@ class CompressorAscendBackendMixin:
         forward_batch: ForwardBatch,
         override_loc: Optional[torch.Tensor] = None,
     ) -> None:
+        from sgl_kernel_npu.operators import kvcacheio as npu_cache_ops
+
         kv_scale: Optional[torch.Tensor] = None
         li_kv_dtype = getattr(compressor, "li_kv_dtype", "bf16")
         # A5 quantizes and scatters in one fused kernel, so the dequant scale is
@@ -857,6 +860,7 @@ class C4IndexerAscendBackendMixin:
         forward_batch: ForwardBatch,
     ) -> torch.Tensor:
         import torch_npu
+        from sgl_kernel_npu.operators import attention as npu_attention_ops
 
         if k.dtype == torch.float8_e4m3fn:
             # A5: block-quantize Q to FP8 so it matches the FP8 K buffer; scales
@@ -2078,6 +2082,8 @@ class DeepseekV4AscendAttnBackend(
         actual_seq_lengths_kv: torch.Tensor,
     ) -> torch.Tensor:
         """Top-k metadata for the c4 indexer (v2 op)."""
+        from sgl_kernel_npu.operators import attention as npu_attention_ops
+
         cmp_ratio = 4
         kv_len = actual_seq_lengths_kv.to(torch.int32)
         if actual_seq_lengths_q_pa is not None:
